@@ -1,8 +1,8 @@
-﻿using System.Runtime.CompilerServices;
-using System;
+﻿using System;
+using System.IO;
+
 using Quiz.Controllers;
 using Microsoft.Extensions.Configuration;
-using System.IO;
 
 
 namespace Quiz
