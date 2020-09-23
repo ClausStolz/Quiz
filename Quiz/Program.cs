@@ -1,5 +1,8 @@
-﻿using System;
+﻿using System.Runtime.CompilerServices;
+using System;
 using Quiz.Controllers;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
 
 namespace Quiz
@@ -8,8 +11,32 @@ namespace Quiz
     {
         static void Main(string[] args)
         {
-            var item = new TcpController(1028);
+            var configuration = GetConfiguration("app.config");
+
+            var item = new TcpController(configuration);
             Console.WriteLine("Hello World!");
         }
+
+        private static IConfigurationRoot GetConfiguration(string configName)
+        {
+            var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile(configName);
+
+            if (builder == null)
+            {
+                throw new Exception("Error in creating builder");
+            }
+
+            var configuration = builder.Build();
+        
+            return configuration switch
+            {
+                null => throw new Exception("Can not build configuration"),
+                _ => configuration
+            };
+        }
+
+    
     }
 }
