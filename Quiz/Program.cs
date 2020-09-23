@@ -1,4 +1,6 @@
 ﻿using System;
+using Quiz.Controllers;
+
 
 namespace Quiz
 {
@@ -6,6 +8,7 @@ namespace Quiz
     {
         static void Main(string[] args)
         {
+            var item = new TcpController(1028);
             Console.WriteLine("Hello World!");
         }
     }
