@@ -6,8 +6,10 @@ using System;
 
 namespace Quiz.Controllers
 {
-    public class TcpController
+    public class TcpController : IDisposable
     {
+        private bool _disposed = false;
+
         public Dictionary<int, int> Values { get; set; }
 
         public TcpClient Client { get; set; }
@@ -22,6 +24,30 @@ namespace Quiz.Controllers
             this.SetUpTcpClient();
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
+            if (disposing)
+            {
+                this.Client.GetStream().Close();
+                this.Client.Close();
+                this.Client?.Dispose();
+
+                this.Values?.Clear();
+            }
+
+            this._disposed = true;
+
+        }
         private void GenerateValues()
         {
             var valueSize = Convert.ToInt32(this._configuration["TcpController:ValueSize"]);
