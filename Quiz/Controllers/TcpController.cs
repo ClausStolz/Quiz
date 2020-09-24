@@ -35,7 +35,7 @@ namespace Quiz.Controllers
             {
                 tasks.Add(Task.Factory.StartNew(
                     () => {
-                        this.Values[i] = Convert.ToInt32(this._tcpRepository.GetValueAsync(i));
+                        this.Values[i] = this._tcpRepository.GetValueAsync(i).ToString().GetInt32();
                     }
                 ));
             }
@@ -44,6 +44,7 @@ namespace Quiz.Controllers
             var values = this.Values.Select(x => x.Value);
             return values.Median();
         }
+
         private void GenerateValues()
         {
             var valueSize = Convert.ToInt32(this._configuration["TcpController:ValueSize"]);
