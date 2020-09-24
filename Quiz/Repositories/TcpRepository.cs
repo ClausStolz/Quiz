@@ -1,8 +1,9 @@
 using System;
+using System.Text;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 using Microsoft.Extensions.Configuration;
-
 
 
 namespace Quiz.Repositories
@@ -14,13 +15,31 @@ namespace Quiz.Repositories
         private bool _disposed = false;
 
         public TcpClient Client { get; }
-        
+
         public TcpRepository(IConfigurationRoot configuration)
         {
             this._configuration = (ConfigurationRoot)configuration;
             this.Client = new TcpClient();
 
             this.SetupTcpClientConnection();
+        }
+
+        public async Task<string> GetValueAsync(int digit)
+        {
+            var netStream = this.Client.GetStream();
+            if (netStream.CanWrite)
+            {
+                Byte[] sendBytes = Encoding.UTF8.GetBytes(digit.ToString());
+                await netStream.WriteAsync(sendBytes, 0, sendBytes.Length);
+            }
+            if (netStream.CanRead)
+            {
+                byte[] bytes = new byte[this.Client.ReceiveBufferSize];
+
+                await netStream.ReadAsync(bytes, 0, (int)this.Client.ReceiveBufferSize);
+                return bytes.ToString();
+            }
+            return null;
         }
 
         public void Dispose()
