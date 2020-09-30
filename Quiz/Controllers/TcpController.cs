@@ -41,18 +41,36 @@ namespace Quiz.Controllers
             .Select(async i =>
             {
                 string val = await _tcpRepository.GetValueAsync(i);
-                Values[i] = val.GetInt32();
+                if (!string.IsNullOrEmpty(val))
+                {
+                    Values[i] = val.GetInt32();
+                    if (Values[i] == -1)
+                    {
+                        this._logger.WriteLog("Not number in string, where index: " + i.ToString());
+                    }
+                }
             });
             await Task.WhenAll(tasks);
             
             var values = this.Values.Select(x => x.Value);
-            return values.Median();
+
+            if (!values.Contains(-1))
+            {
+                this._logger.WriteLog("All numbers received, median calculation begins");
+                return values.Median();
+            }
+            else
+            {
+                this._logger.WriteLog("Non of all numbers received");
+                return -1;
+            }
+            
         }
 
         private void GenerateValues()
         {
             var valueSize = Convert.ToInt32(this._configuration["TcpController:ValueSize"]);
-            this.Values = Enumerable.Range(1, valueSize).ToDictionary(x => x, x => 0);
+            this.Values = Enumerable.Range(1, valueSize).ToDictionary(x => x, x => -1);
         }
     }
 }

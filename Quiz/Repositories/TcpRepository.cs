@@ -4,6 +4,7 @@ using System.Text;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
+using Quiz.Extensions;
 using Quiz.Repositories.Interfaces;
 
 using Microsoft.Extensions.Logging;
@@ -28,30 +29,46 @@ namespace Quiz.Repositories
             this._logger = logger;
 
             this.Client = new TcpClient();
-
+            
             this.SetupTcpClientConnection();
         }
 
         public async Task<string> GetValueAsync(int digit)
         {
-            var netStream = this.Client.GetStream();
-            if (netStream.CanWrite)
+            try
             {
-                Byte[] sendBytes = Encoding.UTF8.GetBytes(digit.ToString());
-                await netStream.WriteAsync(sendBytes, 0, sendBytes.Length);
+                var netStream = this.Client.GetStream();
+                if (netStream.CanWrite)
+                {
+                    Byte[] sendBytes = Encoding.UTF8.GetBytes(digit.ToString() + "\n");
+                    await netStream.WriteAsync(sendBytes, 0, sendBytes.Length);
+                }
+                else
+                {
+                    throw new Exception("Stream can't write to tcp server with index: " + digit.ToString());
+                }
+
+                if (netStream.CanRead)
+                {
+                    byte[] bytes = new byte[this.Client.ReceiveBufferSize];
+
+                    await netStream.ReadAsync(bytes, 0, (int)this.Client.ReceiveBufferSize);
+                    File.WriteAllBytes("test.txt", bytes);
+
+                    return Encoding.UTF8.GetString(bytes);
+                }
+                else
+                {
+                    throw new Exception("Stream can't read to tcp server with index: " + digit.ToString());
+                }
             }
-            if (netStream.CanRead)
+            catch(Exception ex)
             {
-                byte[] bytes = new byte[this.Client.ReceiveBufferSize];
-
-                await netStream.ReadAsync(bytes, 0, (int)this.Client.ReceiveBufferSize);
-                File.WriteAllBytes("test.txt", bytes);
-
-                return Encoding.Unicode.GetString(bytes);
+                this._logger.WriteLog(ex, "index: " + digit.ToString() + "|" + ex.Message);
+                return null;
             }
 
-            netStream.Close();
-            return null;
+            
         }
 
         public void Dispose()
@@ -78,10 +95,27 @@ namespace Quiz.Repositories
 
         private void SetupTcpClientConnection()
         {
-            var ip = this._configuration["Connection:Ip"];
-            var port = Convert.ToInt32(this._configuration["Connection:Port"]);
+            try
+            {
+                var ip = this._configuration["Connection:Ip"];
+                var port = Convert.ToInt32(this._configuration["Connection:Port"]);
+                
+                this.Client.Connect(ip, port);
+                
+                if (!this.Client.Connected)
+                {
+                    throw new Exception("Client doesn't connect to tcp server");
+                }
 
-            this.Client.Connect(ip, port);
+                this._logger.WriteLog("Client connect to tcp server");
+            }
+            catch (Exception ex)
+            {
+                this._logger.WriteLog(ex, ex.Message);
+            }
+            
+
+            
         }
     }
 }
