@@ -1,24 +1,32 @@
 using System;
+using System.IO;
 using System.Text;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
+using Quiz.Repositories.Interfaces;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
 
 namespace Quiz.Repositories
 {
-    public class TcpRepository : IDisposable
+    public class TcpRepository : ITcpRepository
     {
-        private ConfigurationRoot _configuration { get; }
+        public TcpClient Client { get; }
+
+        private IConfiguration _configuration { get; }
+
+        private ILogger<TcpRepository> _logger { get; }
 
         private bool _disposed = false;
 
-        public TcpClient Client { get; }
-
-        public TcpRepository(IConfigurationRoot configuration)
+        public TcpRepository(IConfiguration configuration, ILogger<TcpRepository> logger)
         {
-            this._configuration = (ConfigurationRoot)configuration;
+            this._configuration = configuration;
+            this._logger = logger;
+
             this.Client = new TcpClient();
 
             this.SetupTcpClientConnection();
@@ -37,8 +45,12 @@ namespace Quiz.Repositories
                 byte[] bytes = new byte[this.Client.ReceiveBufferSize];
 
                 await netStream.ReadAsync(bytes, 0, (int)this.Client.ReceiveBufferSize);
-                return bytes.ToString();
+                File.WriteAllBytes("test.txt", bytes);
+
+                return Encoding.Unicode.GetString(bytes);
             }
+
+            netStream.Close();
             return null;
         }
 

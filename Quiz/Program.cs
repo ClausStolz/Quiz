@@ -1,27 +1,56 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 
 using Quiz.Controllers;
+using Quiz.Repositories;
+using Quiz.Repositories.Interfaces;
+
+using NLog;
+using NLog.Extensions.Logging;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 
 namespace Quiz
 {
     class Program
     {
-        static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            var configuration = GetConfiguration("app.config");
+            var logger = LogManager.GetCurrentClassLogger();
 
-            var item = new TcpController(configuration);
-            Console.WriteLine("Hello World!");
+            try
+            {
+                var configuration = GetConfiguration("app.config");
+                var serviceProvider = GetServiceProvider(configuration);
+
+                using (serviceProvider as IDisposable)
+                {
+                    var tcpController = serviceProvider.GetRequiredService<TcpController>();
+                    var median = await tcpController.GetMedian();
+
+                    Console.WriteLine(median.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+                throw;
+            }
+            finally
+            {
+                LogManager.Shutdown();
+            }   
         }
 
-        private static IConfigurationRoot GetConfiguration(string configName)
+        private static IConfiguration GetConfiguration(string configName)
         {
             var builder = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile(configName);
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile(configName, optional: true, reloadOnChange: true);
 
             if (builder == null)
             {
@@ -35,6 +64,21 @@ namespace Quiz
                 null => throw new Exception("Can not build configuration"),
                 _ => configuration
             };
+        }
+
+        private static IServiceProvider GetServiceProvider(IConfiguration config)
+        {
+        return new ServiceCollection()
+            .AddSingleton<IConfiguration>(config)
+            .AddSingleton<TcpController>()
+            .AddTransient<ITcpRepository, TcpRepository>()
+            .AddLogging(loggingBuilder =>
+            {
+                    loggingBuilder.ClearProviders();
+                    loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    loggingBuilder.AddNLog(config);
+            })
+            .BuildServiceProvider();
         }
 
     

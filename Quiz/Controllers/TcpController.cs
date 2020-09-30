@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 using Quiz.Extensions;
 using Quiz.Repositories;
+using Quiz.Repositories.Interfaces;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
 
@@ -14,32 +17,33 @@ namespace Quiz.Controllers
     {
         public Dictionary<int, int> Values { get; set; }
 
-        private ConfigurationRoot _configuration { get; }
+        private IConfiguration _configuration { get; }
 
-        private TcpRepository _tcpRepository { get; }
+        private ITcpRepository _tcpRepository { get; }
 
-        public TcpController(IConfigurationRoot configuration)
+        private ILogger<TcpController> _logger { get; }
+
+        public TcpController(IConfiguration configuration, ILogger<TcpController> logger, ITcpRepository tcpRepository)
         {
-            this._configuration = (ConfigurationRoot)configuration;
-            this._tcpRepository = new TcpRepository(configuration);
+            this._configuration = configuration;
+            this._logger = logger;
+            this._tcpRepository = tcpRepository;
 
             this.GenerateValues();
+
+            this._logger.WriteLog("Create TcpController");
         }
 
-        public decimal GetMedian()
+        public async Task<decimal> GetMedian()
         {
-            List<Task> tasks = new List<Task>();
-
-            var  valueSize = Values.Count;
-            for (int i = 1; i <= valueSize; i++)
+            var valueSize = Values.Count;
+            var tasks = Enumerable.Range(1, valueSize)
+            .Select(async i =>
             {
-                tasks.Add(Task.Factory.StartNew(
-                    () => {
-                        this.Values[i] = this._tcpRepository.GetValueAsync(i).ToString().GetInt32();
-                    }
-                ));
-            }
-            Task.WaitAll(tasks.ToArray());
+                string val = await _tcpRepository.GetValueAsync(i);
+                Values[i] = val.GetInt32();
+            });
+            await Task.WhenAll(tasks);
             
             var values = this.Values.Select(x => x.Value);
             return values.Median();

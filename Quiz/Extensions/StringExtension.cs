@@ -8,7 +8,8 @@ namespace Quiz.Extensions
     {
         public static int GetInt32(this string value)
         {
-            var result = Convert.ToInt32(new String(value.Where(Char.IsDigit).ToArray()));
+            var cleanedValue = value.Replace("\0", string.Empty); 
+            var result = Convert.ToInt32(new String(cleanedValue.Where(Char.IsDigit).ToArray()));
             return result;
         }
     }
