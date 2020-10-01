@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Quiz.Repositories.Interfaces
 {
-    public interface ITcpRepository : IDisposable
+    public interface ITcpRepository
     {
          public Task<string> GetValueAsync(int digit);       
     }

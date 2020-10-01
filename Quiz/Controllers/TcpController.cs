@@ -3,8 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
+using Quiz.Managers;
 using Quiz.Extensions;
-using Quiz.Repositories;
 using Quiz.Repositories.Interfaces;
 
 using Microsoft.Extensions.Logging;
@@ -15,7 +15,9 @@ namespace Quiz.Controllers
 {
     public class TcpController
     {
-        public Dictionary<int, int> Values { get; set; }
+        public Dictionary<string, int> Values { get; set; }
+
+        public bool IsFinished { get; set; }
 
         private IConfiguration _configuration { get; }
 
@@ -29,7 +31,9 @@ namespace Quiz.Controllers
             this._logger = logger;
             this._tcpRepository = tcpRepository;
 
-            this.GenerateValues();
+            this.IsFinished = false;
+
+            this.Values = SaveValueManager.LoadValues(Convert.ToInt32(this._configuration["TcpController:ValueSize"]));
 
             this._logger.WriteLog("Create TcpController");
         }
@@ -40,23 +44,29 @@ namespace Quiz.Controllers
             var tasks = Enumerable.Range(1, valueSize)
             .Select(async i =>
             {
-                string val = await _tcpRepository.GetValueAsync(i);
-                if (!string.IsNullOrEmpty(val))
+                var txt_i = i.ToString();
+                if (Values[txt_i] == -1)
                 {
-                    Values[i] = val.GetInt32();
-                    if (Values[i] == -1)
+                    var val = await _tcpRepository.GetValueAsync(i);
+                    if (!string.IsNullOrEmpty(val))
                     {
-                        this._logger.WriteLog("Not number in string, where index: " + i.ToString());
-                    }
-                }
+                        Values[txt_i] = val.GetInt32();
+                        if (Values[txt_i] == -1)
+                        {
+                            this._logger.WriteLog("Not number in string, where index: " + txt_i);
+                        }
+                    }   
+                }   
             });
             await Task.WhenAll(tasks);
             
+            SaveValueManager.SaveValues(this.Values);
             var values = this.Values.Select(x => x.Value);
 
             if (!values.Contains(-1))
             {
                 this._logger.WriteLog("All numbers received, median calculation begins");
+                IsFinished = true;
                 return values.Median();
             }
             else
@@ -65,12 +75,6 @@ namespace Quiz.Controllers
                 return -1;
             }
             
-        }
-
-        private void GenerateValues()
-        {
-            var valueSize = Convert.ToInt32(this._configuration["TcpController:ValueSize"]);
-            this.Values = Enumerable.Range(1, valueSize).ToDictionary(x => x, x => -1);
         }
     }
 }

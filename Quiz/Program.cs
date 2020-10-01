@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 using Quiz.Controllers;
@@ -20,6 +21,8 @@ namespace Quiz
     {
         public static async Task Main(string[] args)
         {
+            SetEncodingProvider();
+
             var logger = LogManager.GetCurrentClassLogger();
 
             try
@@ -30,7 +33,11 @@ namespace Quiz
                 using (serviceProvider as IDisposable)
                 {
                     var tcpController = serviceProvider.GetRequiredService<TcpController>();
-                    var median = await tcpController.GetMedian();
+                    var median = 0m;
+                    while (!tcpController.IsFinished)
+                    {
+                        median = await tcpController.GetMedian();
+                    }
 
                     Console.WriteLine(median.ToString());
                 }
@@ -81,6 +88,10 @@ namespace Quiz
             .BuildServiceProvider();
         }
 
+        private static void SetEncodingProvider()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        } 
     
     }
 }

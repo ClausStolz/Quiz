@@ -15,7 +15,9 @@ namespace Quiz.Repositories
 {
     public class TcpRepository : ITcpRepository
     {
-        public TcpClient Client { get; }
+        const int koi8CodePage = 20866;
+        
+        public TcpClient Client { get; set; }
 
         private IConfiguration _configuration { get; }
 
@@ -36,12 +38,20 @@ namespace Quiz.Repositories
         public async Task<string> GetValueAsync(int digit)
         {
             try
-            {
+            {   
+                if (!this.Client.Connected)
+                {
+                    this.Client = new TcpClient();
+                    SetupTcpClientConnection();
+                }
+
                 var netStream = this.Client.GetStream();
                 if (netStream.CanWrite)
                 {
-                    Byte[] sendBytes = Encoding.UTF8.GetBytes(digit.ToString() + "\n");
-                    await netStream.WriteAsync(sendBytes, 0, sendBytes.Length);
+                    using (var streamWriter = new StreamWriter(netStream, Encoding.GetEncoding(20866), this.Client.ReceiveBufferSize, true))
+                    {
+                        await streamWriter.WriteLineAsync(digit.ToString());
+                    }
                 }
                 else
                 {
@@ -50,12 +60,10 @@ namespace Quiz.Repositories
 
                 if (netStream.CanRead)
                 {
-                    byte[] bytes = new byte[this.Client.ReceiveBufferSize];
-
-                    await netStream.ReadAsync(bytes, 0, (int)this.Client.ReceiveBufferSize);
-                    File.WriteAllBytes("test.txt", bytes);
-
-                    return Encoding.UTF8.GetString(bytes);
+                    using (var streamReader = new StreamReader(netStream, Encoding.GetEncoding(koi8CodePage), true, this.Client.ReceiveBufferSize, true))
+                    {
+                        return await streamReader.ReadLineAsync();
+                    }
                 }
                 else
                 {
